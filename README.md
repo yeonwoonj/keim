@@ -19,8 +19,8 @@ attachment such as image, and video tags - strip
 4. open http://localhost:8000/test
 
 ## See Also
-https://namu.wiki/w/나무위키:엔진
-https://namu.wiki/w/나무위키:편집%20도움말
+* https://namu.wiki/w/나무위키:엔진
+* https://namu.wiki/w/나무위키:편집%20도움말
 
 ## License
 GNU GPLv3
