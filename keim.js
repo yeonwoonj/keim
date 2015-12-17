@@ -95,6 +95,23 @@ var Keim = (function(Keim) {
       }
       return html;
     }
+    var li = function(sign,num,o) {
+      var attr='';
+      var types = {
+        '*': 'disc',
+        '1.': 'decimal',
+        'i.': 'lower-roman',
+        'I.': 'upper-roman',
+        'a.': 'lower-latin',
+        'A.': 'upper-latin',
+      };
+      attr +=' style="list-style-type:'+types[sign]+';"';
+
+      if (num) {
+        attr += ' value="'+num+'"';
+      }
+      return '<li'+attr+'>'+o+'</li>';
+    }
     var re = /^( +)(\*|[1iIaA]\.(?:#(\d+))?)? */;
     var m;
     while (m = t.exec(re)) {
@@ -107,7 +124,7 @@ var Keim = (function(Keim) {
         } else {
           html += close(d);
         }
-        html += '<li>'+_process(text)+'</li>';
+        html += li(sign,num,_process(text));
       } else {
         html += _process(text);
       }
