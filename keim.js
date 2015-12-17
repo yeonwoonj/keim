@@ -220,20 +220,40 @@ var Keim = (function(Keim) {
     return this.wrap(html);
   });
 
-  var Format = _TP(null, null, function(t) {
-    var line = t.readline();
+  var Files = _TP(null, null, function(line) {
+    line = line.replace(/\[\[:?파일:.+?\]\]/g, '<span class="file-truncated"/>');
+    line = line.replace(/attachment:(\S+)/g, '<span class="attachment-truncated"/>');
+
+    // external images
+    line = line.replace(/https?:\/\/(\S+?)\.(jpg|jpeg|png|gif)(\S*)/g, '<span class="image-truncated"/>');
+
+    return line;
+  });
+  var Links = _TP(null, null, function(line) {
     line = line.replace(/\[\[(.+?)(?:\|(.+?))?\]\]/g, function(m,link,text) {
       return '<a href="http://namu.wiki/w/'+link+'">'+ (text||link) +'</a>';
     });
-    line = line.replace(/~~(.+?)~~/g,'<s>$1</s>');
-    line = line.replace(/'''(.+?)'''/g,'<strong>$1</strong>');
-    line = line.replace(/''(.+?)''/g,'<em>$1</em>');
+    return line;
+  });
+
+  var Format = _TP(null, null, function(line) {
     line = line.replace(/\[br\]/g,'<br>');
-    return line + '<br>';
+    line = line.replace(/'''(.+?)'''/g,'<strong>$1</strong>');
+    line = line.replace(/''(.+?)''/g,'<i>$1</i>');
+    line = line.replace(/~~(.+?)~~/g,'<s>$1</s>');
+    line = line.replace(/--(.+?)--/g,'<s>$1</s>');
+    line = line.replace(/__(.+?)__/g,'<u>$1</u>');
+    line = line.replace(/\^\^(.+?)\^\^/g,'<sup>$1</sup>');
+    line = line.replace(/,,(.+?),,/g,'<sub>$1</sub>');
+    return line;
   });
 
   var Default = _TP(null, null, function(t) {
-    return t.readline() + '<br>';
+    var line = t.readline();
+    line = Files.read(line);
+    line = Links.read(line);
+    line = Format.read(line);
+    return line+'<br>';
   });
   /* end of tag processors */
 
@@ -242,7 +262,6 @@ var Keim = (function(Keim) {
     Blockquote,
     Indent,
     Table,
-    Format,
     Default,
   ];
 
