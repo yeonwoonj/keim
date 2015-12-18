@@ -138,7 +138,7 @@ var Keim = (function(Keim) {
     return html;
   });
 
-  var Blockquote = _TP('blockquote', /^( *)> */, function(s) {
+  var Blockquote = _TP('blockquote', /^( *)>+ */, function(s) {
     var html = '';
     var last = -1;
     var open = function(d) {
