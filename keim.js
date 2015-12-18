@@ -236,7 +236,7 @@ var Keim = (function(Keim) {
       do {
         n = toc.n.pop();
         d = toc.d.pop();
-      } while (d!=hn);
+      } while (d!=hn&&toc.d.length);
       toc.n.push(n+1);
     }
     toc.d.push(hn);
