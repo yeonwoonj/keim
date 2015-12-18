@@ -30,6 +30,7 @@ body {
 
 #toc { border:1px solid silver; padding:1em; }
 #toc ol { margin:0; padding-left:0; }
+#toc li { list-style-type:none; }
 
 .table-left {}
 .table-center { margin:auto; }

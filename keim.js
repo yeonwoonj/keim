@@ -57,8 +57,13 @@ var Keim = (function(Keim) {
     wrap: function(o) {
       return '<'+this.name+(this.attr||'')+'>'+o+'</'+this.name+'>';
     },
-    make: function() {
-      return Object.create(this);
+    make: function(ctx) {
+      var o = Object.create(this);
+      o.ctx = ctx;
+      return o;
+    },
+    html: function(m) {
+      return _process(_createText(m),this.ctx);
     },
     regx: null,
     re: function() {
@@ -117,16 +122,16 @@ var Keim = (function(Keim) {
     while (m = t.exec(re)) {
       var [_,depth,sign,num] = m;
       var d = depth.length;
-      var text = _createText(t.readline());
+      var line = t.readline();
       if (sign) {
         if (d>last()) {
           html += open(d);
         } else {
           html += close(d);
         }
-        html += li(sign,num,_process(text));
+        html += li(sign,num,this.html(line));
       } else {
-        html += _process(text);
+        html += this.html(line);
       }
     }
     html += close(0);
@@ -159,8 +164,7 @@ var Keim = (function(Keim) {
         }
         html += open(d);
       }
-      var text = _createText(t.readline());
-      html += _process(text);
+      html += this.html(t.readline());
     }
     html += close(last);
     return html;
@@ -170,8 +174,7 @@ var Keim = (function(Keim) {
     var html='';
     var m;
     while (m = t.exec(this.re())) {
-      var text = _createText(t.readline());
-      html += _process(text);
+      html += this.html(t.readline());
       if (Blockquote.peek(t)) {
         break;
       }
@@ -210,8 +213,7 @@ var Keim = (function(Keim) {
         var attr = ' colspan="'+(b.length/2)+'"';
         html += table.td.open(attr);
 
-        var text = _createText(cell);
-        html += _process(text);
+        html += this.html(cell);
       } else {
         html += table.td.close() + table.tr.close();
       }
@@ -220,7 +222,36 @@ var Keim = (function(Keim) {
     return this.wrap(html);
   });
 
-  var Files = _TP(null, null, function(line) {
+  var Heading = _TP('h', /^(={1,6}) +(.+?) +\1/, function(t) {
+    var toc = this.ctx.toc;
+    var m = t.exec(this.re());
+    var [_,h,l] = m;
+    var hn = h.length;
+
+    var pd=toc.d;
+    toc.d=hn;
+    if (hn>pd) {
+      toc.n.push(1);
+    } else {
+      for (var i=hn; i<pd; i++) {
+        toc.n.pop();
+      }
+      var n = toc.n.pop();
+      toc.n.push(n+1);
+    }
+    var num=toc.n.join('.');
+    var html = this.html(l);
+    var tn=toc.n.length;
+    toc.l.push('<li style="margin-left:'+tn+'em"><a href="#s-'+num+'">'+num+'.</a> '+html+'</li>');
+    return '<h'+hn+' id="s-'+num+'"><a href="#toc">'+num+'.</a> '+html+'</h'+hn+'>';
+  });
+
+  var Stub = _TP(null, null, function(line) {
+    line = line.replace('[목차]', '<ol id="toc">'+this.ctx.toc.l.join('')+'</ol>');
+    return line;
+  });
+
+  var File = _TP(null, null, function(line) {
     line = line.replace(/\[\[:?파일:.+?\]\]/g, '<span class="file-truncated"/>');
     line = line.replace(/attachment:(\S+)/g, '<span class="attachment-truncated"/>');
 
@@ -229,7 +260,8 @@ var Keim = (function(Keim) {
 
     return line;
   });
-  var Links = _TP(null, null, function(line) {
+
+  var Link = _TP(null, null, function(line) {
     line = line.replace(/\[\[(.+?)(?:\|(.+?))?\]\]/g, function(m,link,text) {
       return '<a href="http://namu.wiki/w/'+link+'">'+ (text||link) +'</a>';
     });
@@ -250,8 +282,8 @@ var Keim = (function(Keim) {
 
   var Default = _TP(null, null, function(t) {
     var line = t.readline();
-    line = Files.read(line);
-    line = Links.read(line);
+    line = File.read(line);
+    line = Link.read(line);
     line = Format.read(line);
     return line+'<br>';
   });
@@ -262,60 +294,69 @@ var Keim = (function(Keim) {
     Blockquote,
     Indent,
     Table,
+    Heading,
     Default,
   ];
 
   var _createMP = function(psrs) {
     var parsers = psrs;
-    var _parser = function(t) {
+    var _parser = function(t,c) {
       for (var i in parsers) {
         if (parsers[i].peek(t)) {
-          return parsers[i].make();
+          return parsers[i].make(c);
         }
       }
     }
-    var _read = function(t) {
-      var p = _parser(t);
+    var _read = function(t,c) {
+      var p = _parser(t,c);
       return p.read(t);
     }
 
     return {
-      process: function(t) {
+      process: function(t,c) {
         var html='';
         while (t.good()) {
-          html += _read(t);
+          html += _read(t,c);
         }
         return html;
       },
     };
   };
 
-  var _process = function(t,mp) {
+  var _process = function(t,c,mp) {
     mp = mp||_createMP(parsers1);
 
-    return mp.process(t);
+    return mp.process(t,c);
   }
 
   // processor prototype
-  var PP = {
-    text:'',
-    html:'',
-    process: function(markup) {
-      this.text = markup;
-      this.html = _process(_createText(markup));
-      return this;
-    },
+  var PP = function() {
+    var Context = function() {
+      this.toc  = {
+        d: 0,
+        l: [],
+        n: [],
+      }
+    }
+    this.html = function(markup) {
+      var html='';
+      var ctx = new Context();
+      html = _process(_createText(markup),ctx);
+      html = Stub.make(ctx).read(html);
+      return html;
+    };
   }
 
   // instanciate PP and process markup text
-  var _processor = function(markup) {
-    return Object.create(PP).process(markup);
+  var _html = function(markup) {
+    var processor = new PP();
+    return processor.html(markup);
   }
 
   /* public functions */
   Keim.process = function(markup) {
 
-    return _processor(markup).html;
+    return _html(markup);
   }
 
   return Keim;
