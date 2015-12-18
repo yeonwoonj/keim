@@ -44,7 +44,7 @@ var Keim = (function(Keim) {
         return m[0];
       },
       readcell: function() {
-        var m = /^\n|^\s*$|^([\s\S]+?)(?=\|\||$)/.exec(this.peek());
+        var m = /^ *\n|^\s*$|^([\s\S]+?)(?=\|\||$)/.exec(this.peek());
         this.seek(m[0].length);
         return m[1];
       },
@@ -187,16 +187,100 @@ var Keim = (function(Keim) {
     var html='';
 
     var table = {
+      on: false,
+      attr: function(p) {
+        var cls=[],sty=[];
+        var stk = {
+          'bgcolor': 'background-color',
+          'bordercolor': 'border-color',
+          'width': 'width',
+        };
+        var re = /<table\s*?(\w+)=(\w+)>/g;
+        var m;
+        while (m = re.exec(p)) {
+          var [_,k,v] = m;
+          switch (k.toLowerCase()) {
+            case 'align':
+              cls.push('table-'+v);
+              break;
+            case 'bgcolor':
+            case 'bordercolor':
+            case 'width':
+              sty.push(stk[k]+':'+v);
+              break;
+          }
+        }
+        var attr='';
+        if (cls.length) attr += ' class="'+cls.join(' ')+'"';
+        if (sty.length) attr += ' style="'+sty.join(' ')+'"';
+        return attr;
+      },
+
       tr: {
         on: false,
         open: function(attr) { this.on = true; return '<tr'+attr+'>'; },
-        close: function() { this.on = false; return '</tr>'; }
+        close: function() { this.on = false; return '</tr>'; },
       },
       td: {
         open: function(attr) { return '<td'+attr+'>'; },
-        close: function() { return '</td>'; }
+        close: function() { return '</td>'; },
+        attr: function(b,t) {
+          var c=b.length/2;
+          var r=1;
+          var cls=[],sty=[];
+
+          var m;
+
+          var re1 = /<([\^v]?)([\(:\)-\|])(\d+)>/g
+          while (m = re1.exec(t)) {
+            var [_,f,k,v] = m;
+            if (k=='(') {
+              cls.push('table-row-left');
+            } else if (k==':') {
+              cls.push('table-row-center');
+            } else if (k==')') {
+              cls.push('table-row-right');
+            } else if (k=='-') {
+              c=v;
+            } else if (k=='|') {
+              r=v;
+              if (f=='^') {
+                sty.push('vertical-align:top');
+              } else if (f=='v') {
+                sty.push('vertical-align:bottom');
+              } else {
+                sty.push('vertical-align:middle');
+              }
+            }
+          }
+
+          var re2 = /<(?:(\w+)=)?([#%\w]+)>/g;
+          while (m = re2.exec(t)) {
+            var [_,k,v] = m;
+            switch ((k||'').toLowerCase()) {
+              case '':
+              case 'bgcolor':
+                sty.push('background-color:'+v);
+                break;
+              case 'rowbgcolor':
+                // TODO
+                break;
+              case 'width':
+              case 'height':
+                sty.push(k+':'+v);
+                break;
+            }
+          }
+          var attr='';
+          if (c>1) { attr += ' colspan='+c; }
+          if (r>1) { attr += ' rowspan='+r; }
+          if (cls.length) { attr += ' class="'+cls.join(' ')+'"'; }
+          if (sty.length) { attr += ' style="'+sty.join(';')+'"'; }
+          return attr;
+        },
       },
     }
+    this.attr='';
 
     var re = /^(?:(\|\|)((?:<.+?>)+))?((?:\|\|)+)/;
     var m;
@@ -210,15 +294,18 @@ var Keim = (function(Keim) {
         } else {
           html += table.tr.open('');
         }
-        var attr = ' colspan="'+(b.length/2)+'"';
-        html += table.td.open(attr);
+        html += table.td.open(table.td.attr(b,cell));
+        this.attr += table.attr(cell);
 
+        cell = cell.replace(/<.+?>/g,'');
         html += this.html(cell);
       } else {
         html += table.td.close() + table.tr.close();
       }
+      if (p) {
+        this.attr += table.attr(p);
+      }
     }
-    this.attr = ' class=""';
     return this.wrap(html);
   });
 
