@@ -275,11 +275,15 @@ var Keim = (function(Keim) {
     return line;
   });
 
-  var Link = _TP(null, null, function(line) {
-    line = line.replace(/\[\[(.+?)(?:\|(.+?))?\]\]/g, function(m,link,text) {
-      return '<a href="http://namu.wiki/w/'+link+'">'+ (text||link) +'</a>';
+  var Link = _TP('a', null, function(line) {
+    var self = this;
+    return line.replace(/\[\[(.+?)(?:\|(.+?))?\]\]/g, function(m,link,text) {
+      self.attr = ' href="'+link+'"';
+      if (link.indexOf('://')!=-1) {
+        self.attr += ' class="external-link"';
+      }
+      return self.wrap(text||link);
     });
-    return line;
   });
 
   var Format = _TP(null, null, function(line) {
