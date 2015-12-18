@@ -242,8 +242,7 @@ var Keim = (function(Keim) {
     toc.d.push(hn);
     var num=toc.n.join('.');
     var html = this.html(l);
-    var tn=toc.n.length;
-    toc.l.push('<li style="margin-left:'+tn+'em"><a href="#s-'+num+'">'+num+'.</a> '+html+'</li>');
+    toc.l.push('<li style="margin-left:'+toc.n.length+'em"><a href="#s-'+num+'">'+num+'.</a> '+html+'</li>');
     return '<h'+hn+' id="s-'+num+'"><a href="#toc">'+num+'.</a> '+html+'</h'+hn+'>';
   });
 
