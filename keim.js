@@ -270,7 +270,7 @@ var Keim = (function(Keim) {
     line = line.replace(/attachment:(\S+)/g, '<span class="attachment-truncated"/>');
 
     // external images
-    line = line.replace(/https?:\/\/(\S+?)\.(jpg|jpeg|png|gif)(\S*)/g, '<span class="image-truncated"/>');
+    line = line.replace(/^https?:\/\/(\S+?)\.(jpg|jpeg|png|gif)(\S*)/g, '<span class="image-truncated"/>');
 
     return line;
   });
