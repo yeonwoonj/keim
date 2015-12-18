@@ -19,7 +19,7 @@
 
 var Keim = (function(Keim) {
 
-  var _createText = function(t) {
+  var _Stream = function(t) {
     return {
       text: t,
       rpos: 0,
@@ -29,23 +29,23 @@ var Keim = (function(Keim) {
       peek: function() {
         return this.text.substr(this.rpos);
       },
-      fowd: function(len) {
-        this.rpos += len;
+      seek: function(offset) {
+        this.rpos += offset;
       },
       exec: function(re) {
         var m = re.exec(this.peek());
         if (m)
-          this.fowd(m[0].length);
+          this.seek(m[0].length);
         return m;
       },
       readline: function() {
         var m = /.*$/m.exec(this.peek());
-        this.fowd(m[0].length+1);
+        this.seek(m[0].length+1);
         return m[0];
       },
       readcell: function() {
         var m = /^\n|^\s*$|^([\s\S]+?)(?=\|\||$)/.exec(this.peek());
-        this.fowd(m[0].length);
+        this.seek(m[0].length);
         return m[1];
       },
     };
@@ -63,14 +63,14 @@ var Keim = (function(Keim) {
       });
     },
     html: function(m) {
-      return _process(_createText(m),this.ctx);
+      return _process(_Stream(m),this.ctx);
     },
     regx: null,
     re: function() {
       return new RegExp(this.regx.source, this.regx.flags);
     },
-    peek: function(t) {
-      return (this.regx==null)||this.re().test(t.peek());
+    peek: function(s) {
+      return (this.regx==null)||this.re().test(s.peek());
     },
   }
 
@@ -82,7 +82,7 @@ var Keim = (function(Keim) {
     return o;
   };
 
-  var List = _TP('ol', /^( +)(\*|[1iIaA]\.(?:#(\d+))?) */, function(t) {
+  var List = _TP('ol', /^( +)(\*|[1iIaA]\.(?:#(\d+))?) */, function(s) {
     var html='';
     var lists = [];
     var last = function() {
@@ -119,10 +119,10 @@ var Keim = (function(Keim) {
     }
     var re = /^( +)(\*|[1iIaA]\.(?:#(\d+))?)? */;
     var m;
-    while (m = t.exec(re)) {
+    while (m = s.exec(re)) {
       var [_,depth,sign,num] = m;
       var d = depth.length;
-      var line = t.readline();
+      var line = s.readline();
       if (sign) {
         if (d>last()) {
           html += open(d);
@@ -138,7 +138,7 @@ var Keim = (function(Keim) {
     return html;
   });
 
-  var Blockquote = _TP('blockquote', /^( *)> */, function(t) {
+  var Blockquote = _TP('blockquote', /^( *)> */, function(s) {
     var html = '';
     var last = -1;
     var open = function(d) {
@@ -155,7 +155,7 @@ var Keim = (function(Keim) {
       return o;
     }
     var m;
-    while (m = t.exec(this.re())) {
+    while (m = s.exec(this.re())) {
       var [_,depth] = m;
       var d = depth.length;
       if (d!=last) {
@@ -164,18 +164,18 @@ var Keim = (function(Keim) {
         }
         html += open(d);
       }
-      html += this.html(t.readline());
+      html += this.html(s.readline());
     }
     html += close(last);
     return html;
   });
 
-  var Indent = _TP('div', /^ /, function(t) {
+  var Indent = _TP('div', /^ /, function(s) {
     var html='';
     var m;
-    while (m = t.exec(this.re())) {
-      html += this.html(t.readline());
-      if (Blockquote.peek(t)) {
+    while (m = s.exec(this.re())) {
+      html += this.html(s.readline());
+      if (Blockquote.peek(s)) {
         break;
       }
     }
@@ -183,7 +183,7 @@ var Keim = (function(Keim) {
     return this.wrap(html);
   });
 
-  var Table = _TP('table', /^(?:\|\|)+/, function(t) {
+  var Table = _TP('table', /^(?:\|\|)+/, function(s) {
     var html='';
 
     var table = {
@@ -200,10 +200,10 @@ var Keim = (function(Keim) {
 
     var re = /^(?:(\|\|)((?:<.+?>)+))?((?:\|\|)+)/;
     var m;
-    while (m = t.exec(re)) {
+    while (m = s.exec(re)) {
       var [_,b1,p,b2] = m;
       var b = (b1||'')+b2;
-      var cell = t.readcell();
+      var cell = s.readcell();
       if (cell) {
         if (table.tr.on) {
           html += table.td.close();
@@ -222,23 +222,24 @@ var Keim = (function(Keim) {
     return this.wrap(html);
   });
 
-  var Heading = _TP('h', /^(={1,6}) +(.+?) +\1/, function(t) {
+  var Heading = _TP('h', /^(={1,6}) +(.+?) +\1/, function(s) {
     var toc = this.ctx.toc;
-    var m = t.exec(this.re());
+    var m = s.exec(this.re());
     var [_,h,l] = m;
     var hn = h.length;
 
-    var pd=toc.d;
-    toc.d=hn;
+    var pd=toc.d[toc.d.length-1]||0;
     if (hn>pd) {
       toc.n.push(1);
     } else {
-      for (var i=hn; i<pd; i++) {
-        toc.n.pop();
-      }
-      var n = toc.n.pop();
+      var n,d;
+      do {
+        n = toc.n.pop();
+        d = toc.d.pop();
+      } while (d!=hn);
       toc.n.push(n+1);
     }
+    toc.d.push(hn);
     var num=toc.n.join('.');
     var html = this.html(l);
     var tn=toc.n.length;
@@ -280,8 +281,8 @@ var Keim = (function(Keim) {
     return line;
   });
 
-  var Default = _TP(null, null, function(t) {
-    var line = t.readline();
+  var Default = _TP(null, null, function(s) {
+    var line = s.readline();
     line = File.read(line);
     line = Link.read(line);
     line = Format.read(line);
@@ -300,40 +301,40 @@ var Keim = (function(Keim) {
 
   var _createMP = function(psrs) {
     var parsers = psrs;
-    var _parser = function(t,c) {
+    var _parser = function(s,c) {
       for (var i in parsers) {
-        if (parsers[i].peek(t)) {
+        if (parsers[i].peek(s)) {
           return parsers[i].make(c);
         }
       }
     }
-    var _read = function(t,c) {
-      var p = _parser(t,c);
-      return p.read(t);
+    var _read = function(s,c) {
+      var p = _parser(s,c);
+      return p.read(s);
     }
 
     return {
-      process: function(t,c) {
+      process: function(s,c) {
         var html='';
-        while (t.good()) {
-          html += _read(t,c);
+        while (s.good()) {
+          html += _read(s,c);
         }
         return html;
       },
     };
   };
 
-  var _process = function(t,c,mp) {
+  var _process = function(s,c,mp) {
     mp = mp||_createMP(parsers1);
 
-    return mp.process(t,c);
+    return mp.process(s,c);
   }
 
   // processor prototype
   var PP = function() {
     var Context = function() {
       this.toc  = {
-        d: 0,
+        d: [],
         l: [],
         n: [],
       }
@@ -341,7 +342,7 @@ var Keim = (function(Keim) {
     this.html = function(markup) {
       var html='';
       var ctx = new Context();
-      html = _process(_createText(markup),ctx);
+      html = _process(_Stream(markup),ctx);
       html = Stub.make(ctx).read(html);
       return html;
     };
