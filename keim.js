@@ -222,7 +222,7 @@ var Keim = (function(Keim) {
     return this.wrap(html);
   });
 
-  var Heading = _TP('h', /^(={1,6}) +(.+?) +\1/, function(s) {
+  var Heading = _TP('h', /^(={1,6}) +(.+?) +\1 */, function(s) {
     var toc = this.ctx.toc;
     var m = s.exec(this.re());
     var [_,h,l] = m;
@@ -243,7 +243,10 @@ var Keim = (function(Keim) {
     var num=toc.n.join('.');
     var html = this.html(l);
     toc.l.push('<li style="margin-left:'+toc.n.length+'em"><a href="#s-'+num+'">'+num+'.</a> '+html+'</li>');
-    return '<h'+hn+' id="s-'+num+'"><a href="#toc">'+num+'.</a> '+html+'</h'+hn+'>';
+
+    html = '<h'+hn+' id="s-'+num+'"><a href="#toc">'+num+'.</a> '+html+'</h'+hn+'>';
+    html += this.html(s.readline());
+    return html;
   });
 
   var Footnote = _TP(null, /\[\*(\S+)?\s+(.+?)\]/g, function(line) {
