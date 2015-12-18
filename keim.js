@@ -246,8 +246,22 @@ var Keim = (function(Keim) {
     return '<h'+hn+' id="s-'+num+'"><a href="#toc">'+num+'.</a> '+html+'</h'+hn+'>';
   });
 
+  var Footnote = _TP(null, /\[\*(\S+)?\s+(.+?)\]/g, function(line) {
+    var ctx = this.ctx;
+    return line.replace(this.re(), function(m,tag,txt) {
+      var c = ctx.fn.length+1;
+      tag = tag||c;
+      ctx.fn.push('<a id="rfn-'+c+'" href="#fn-'+c+'">['+tag+']</a> '+txt);
+      return '<sup id="fn-'+c+'" title="'+txt.replace(/<.*?>/g,'')+'"><a href="#rfn-'+c+'">['+tag+']</a></sup>';
+    });
+  });
+
   var Stub = _TP(null, null, function(line) {
     line = line.replace('[목차]', '<ol id="toc">'+this.ctx.toc.l.join('')+'</ol>');
+
+    line = line.replace('[각주]', '');
+    line = Footnote.make(this.ctx).read(line);
+    line += '<hr>'+this.ctx.fn.join('<br>');
     return line;
   });
 
@@ -337,6 +351,7 @@ var Keim = (function(Keim) {
         l: [],
         n: [],
       }
+      this.fn = [];
     }
     this.html = function(markup) {
       var html='';
