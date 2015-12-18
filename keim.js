@@ -58,9 +58,9 @@ var Keim = (function(Keim) {
       return '<'+this.name+(this.attr||'')+'>'+o+'</'+this.name+'>';
     },
     make: function(ctx) {
-      var o = Object.create(this);
-      o.ctx = ctx;
-      return o;
+      return Object.create(this, {
+        ctx: {value: ctx}
+      });
     },
     html: function(m) {
       return _process(_createText(m),this.ctx);
