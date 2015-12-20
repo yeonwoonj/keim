@@ -19,6 +19,16 @@
 
 var Keim = (function(Keim) {
 
+  var htmlencode = function(s) {
+    return s.replace(/</g,'&lt;')
+            .replace(/>/g,'&gt;');
+  }
+
+  var htmldecode = function(s) {
+    return s.replace(/&lt;/g,'<')
+            .replace(/&gt;/g,'>');
+  }
+
   var _Stream = function(t) {
     return {
       text: t,
@@ -346,6 +356,43 @@ var Keim = (function(Keim) {
     });
   });
 
+  var CodeHtml = _TP('code', /^.*{{{(?:#!html|[^#\+])[\s\S]+?}}}/i, function(s) {
+    var html='';
+
+    var text = s.peek();
+    var pos = text.indexOf('{');
+    if (pos) {
+      html += this.html(text.substr(0,pos));
+      s.seek(pos);
+      text = text.substr(pos);
+    }
+
+    var num=0;
+    var end=0;
+    while ((end=text.indexOf('}}}',end))!=-1) {
+      num+=1;
+      end+=3;
+      var all = text.substring(0,end).match(/{{{/g);
+      if (all.length == num) {
+        s.seek(end);
+        break;
+      }
+    }
+
+    if (end==-1) { // when brackets are not closed properly
+      html += Default.read(s);
+      return html;
+    }
+
+    text = text.substring(3,end-3);
+    if (text.substr(0,6).toLowerCase()=='#!html') {
+      html += htmldecode(text.substr(6));
+    } else {
+      html += this.wrap(text);
+    }
+    return html;
+  });
+
   var Stub = _TP(null, null, function(line) {
     line = line.replace('[목차]', '<ol id="toc">'+this.ctx.toc.l.join('')+'</ol>');
 
@@ -385,6 +432,10 @@ var Keim = (function(Keim) {
     line = line.replace(/__(.+?)__/g,'<u>$1</u>');
     line = line.replace(/\^\^(.+?)\^\^/g,'<sup>$1</sup>');
     line = line.replace(/,,(.+?),,/g,'<sub>$1</sub>');
+    line = line.replace(/{{{\+([1-5]) +(.*?)}}}(?!})/g,'<span class="font-size-$1">$2</span>');
+    line = line.replace(/{{{(#[0-9a-f-A-F]{3}) +(.*?)}}}(?!})/g,'<span style="color:$1">$2</span>');
+    line = line.replace(/{{{(#[0-9a-f-A-F]{6}) +(.*?)}}}(?!})/g,'<span style="color:$1">$2</span>');
+    line = line.replace(/{{{#(\w+) +(.*?)}}}(?!})/g,'<span style="color:$1">$2</span>');
     return line;
   });
 
@@ -403,6 +454,7 @@ var Keim = (function(Keim) {
     Indent,
     Table,
     Heading,
+    CodeHtml,
     Default,
   ];
 
@@ -450,7 +502,8 @@ var Keim = (function(Keim) {
     this.html = function(markup) {
       var html='';
       var ctx = new Context();
-      html = _process(_Stream(markup),ctx);
+      html = Stub.make(ctx).read(html);
+      html = _process(_Stream(htmlencode(markup)),ctx);
       html = Stub.make(ctx).read(html);
       return html;
     };
