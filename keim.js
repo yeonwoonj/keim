@@ -319,6 +319,14 @@ var Keim = (function(Keim) {
     return this.wrap(html);
   });
 
+  var HRule = _TP('hr', /^-{4}/, function(s) {
+    var line = s.readline();
+    if (line.search(/^-{11}/)!=-1) {
+      return line;
+    }
+    return '<hr>';
+  });
+
   var Heading = _TP('h', /^(={1,6}) +(.+?) +\1 */, function(s) {
     var toc = this.ctx.toc;
     var m = s.exec(this.re());
@@ -412,7 +420,7 @@ var Keim = (function(Keim) {
     return line;
   });
 
-  var File = _TP(null, null, function(line) {
+  var File = _TP('span', null, function(line) {
     line = line.replace(/\[\[:?파일:.+?\]\]/g, '<span class="file-truncated"/>');
     line = line.replace(/attachment:(\S+)/g, '<span class="attachment-truncated"/>');
 
@@ -467,6 +475,7 @@ var Keim = (function(Keim) {
     Indent,
     Table,
     Heading,
+    HRule,
     Default,
   ];
 
