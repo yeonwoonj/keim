@@ -54,7 +54,7 @@ var Keim = (function(Keim) {
         return m[0];
       },
       readcell: function() {
-        var m = /^ *\n|^\s*$|^([^]+?)(?=\|\||$)/.exec(this.peek());
+        var m = /^ *\n|^\s*$|^\s*([^]+?)(?=\|\||$)/.exec(this.peek());
         this.seek(m[0].length);
         return m[1];
       },
