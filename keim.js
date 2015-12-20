@@ -49,12 +49,12 @@ var Keim = (function(Keim) {
         return m;
       },
       readline: function() {
-        var m = /.*$/m.exec(this.peek());
-        this.seek(m[0].length+1);
+        var m = /.*\n?/m.exec(this.peek());
+        this.seek(m[0].length);
         return m[0];
       },
       readcell: function() {
-        var m = /^ *\n|^\s*$|^([\s\S]+?)(?=\|\||$)/.exec(this.peek());
+        var m = /^ *\n|^\s*$|^([^]+?)(?=\|\||$)/.exec(this.peek());
         this.seek(m[0].length);
         return m[1];
       },
@@ -64,8 +64,8 @@ var Keim = (function(Keim) {
 
   var TP = {
     name: null,
-    wrap: function(o) {
-      return '<'+this.name+(this.attr||'')+'>'+o+'</'+this.name+'>';
+    wrap: function(o,tag) {
+      return '<'+(tag||this.name)+(this.attr||'')+'>'+o+'</'+(tag||this.name)+'>';
     },
     make: function(ctx) {
       return Object.create(this, {
@@ -356,13 +356,15 @@ var Keim = (function(Keim) {
     });
   });
 
-  var CodeHtml = _TP('code', /^.*{{{(?:#!html|[^#\+])[\s\S]+?}}}/i, function(s) {
+  var Excludes = _TP('code', /^(.*?){{{(?:#!html|(?!#\w+ |\+[1-5] ))[^]*?}}}/i, function(s) {
     var html='';
 
     var text = s.peek();
-    var pos = text.indexOf('{');
+
+    var [_,part] = this.re().exec(text);
+    var pos = part.length;
     if (pos) {
-      html += this.html(text.substr(0,pos));
+      html += Default.read(_Stream(part));
       s.seek(pos);
       text = text.substr(pos);
     }
@@ -386,10 +388,18 @@ var Keim = (function(Keim) {
 
     text = text.substring(3,end-3);
     if (text.substr(0,6).toLowerCase()=='#!html') {
-      html += htmldecode(text.substr(6));
+      html += text.substr(6);
     } else {
-      html += this.wrap(text);
+      var pre = text.indexOf('\n')!=-1;
+      text = htmlencode(text);
+      if (pre) {
+        text = text.replace(/^\n+/,'');
+        html += this.wrap(this.wrap(text),'pre');
+      } else {
+        html += this.wrap(text);
+      }
     }
+    html += Default.read(s);
     return html;
   });
 
@@ -440,11 +450,14 @@ var Keim = (function(Keim) {
   });
 
   var Default = _TP(null, null, function(s) {
-    var line = s.readline();
+    if (Excludes.peek(s)) {
+      return Excludes.read(s);
+    }
+    var line = htmlencode(s.readline());
     line = File.read(line);
     line = Link.read(line);
     line = Format.read(line);
-    return line+'<br>';
+    return line.replace('\n','<br>');
   });
   /* end of tag processors */
 
@@ -454,7 +467,6 @@ var Keim = (function(Keim) {
     Indent,
     Table,
     Heading,
-    CodeHtml,
     Default,
   ];
 
@@ -503,7 +515,7 @@ var Keim = (function(Keim) {
       var html='';
       var ctx = new Context();
       html = Stub.make(ctx).read(html);
-      html = _process(_Stream(htmlencode(markup)),ctx);
+      html = _process(_Stream(markup),ctx);
       html = Stub.make(ctx).read(html);
       return html;
     };
