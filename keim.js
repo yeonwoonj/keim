@@ -241,7 +241,7 @@ var Keim = (function(Keim) {
 
           var m;
 
-          var re1 = /<([\^v]?)([\(:\)-\|])(\d+)>/g
+          var re1 = /<([\^v]?)([\(:\)-\|])(\d+)?>/g
           while (m = re1.exec(t)) {
             var [_,f,k,v] = m;
             if (k=='(') {
