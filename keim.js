@@ -412,9 +412,9 @@ var Keim = (function(Keim) {
   });
 
   var Stub = _TP(null, null, function(line) {
-    line = line.replace('[목차]', '<ol id="toc">'+this.ctx.toc.l.join('')+'</ol>');
+    line = line.replace(/\[(목차|tableofcontents)\]/ig, '<ol id="toc">목차'+this.ctx.toc.l.join('')+'</ol>');
 
-    line = line.replace('[각주]', '');
+    line = line.replace(/\[(각주|footnote)\]/ig, '');
     line = Footnote.make(this.ctx).read(line);
     line += '<hr>'+this.ctx.fn.join('<br>');
     return line;
@@ -422,10 +422,10 @@ var Keim = (function(Keim) {
 
   var File = _TP('span', null, function(line) {
     line = line.replace(/\[\[:?파일:.+?\]\]/g, '<span class="file-truncated"/>');
-    line = line.replace(/attachment:(\S+)/g, '<span class="attachment-truncated"/>');
+    line = line.replace(/attachment:(\S+)/ig, '<span class="attachment-truncated"/>');
 
     // external images
-    line = line.replace(/^https?:\/\/(\S+?)\.(jpg|jpeg|png|gif)(\S*)/g, '<span class="image-truncated"/>');
+    line = line.replace(/^https?:\/\/(\S+?)\.(jpg|jpeg|png|gif)(\S*)/ig, '<span class="image-truncated"/>');
 
     return line;
   });
