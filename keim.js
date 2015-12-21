@@ -17,6 +17,8 @@
  *
  */
 
+// custom string prototype functions
+
 String.prototype.count = function(sub,beg,end) {
   var c=0;
   var p=beg||0;
@@ -27,17 +29,15 @@ String.prototype.count = function(sub,beg,end) {
   return c;
 }
 
+String.prototype.htmlencode = function() {
+  return this.replace(/</g,'&lt;')
+             .replace(/>/g,'&gt;');
+}
+
+
+// the global Keim object
+
 var Keim = (function(Keim) {
-
-  var htmlencode = function(s) {
-    return s.replace(/</g,'&lt;')
-            .replace(/>/g,'&gt;');
-  }
-
-  var htmldecode = function(s) {
-    return s.replace(/&lt;/g,'<')
-            .replace(/&gt;/g,'>');
-  }
 
   var _Stream = function(t) {
     return {
@@ -389,7 +389,7 @@ var Keim = (function(Keim) {
       return line;
     }
 
-    return replacer(line, this.re(), '[', ']', function([_1,tag,_2],txt) {
+    return replacer(line, this.re(), '[', ']', function([_1,tag],txt) {
       var c = ctx.fn.length+1;
       tag = tag||c;
       ctx.fn.push('<a id="rfn-'+c+'" href="#fn-'+c+'">['+tag+']</a> '+txt);
@@ -431,7 +431,7 @@ var Keim = (function(Keim) {
       html += text.substr(6);
     } else {
       var pre = text.indexOf('\n')!=-1;
-      text = htmlencode(text);
+      text = text.htmlencode();
       if (pre) {
         text = text.replace(/^\n+/,'');
         html += this.wrap(this.wrap(text),'pre');
@@ -493,7 +493,7 @@ var Keim = (function(Keim) {
     if (Excludes.peek(s)) {
       return Excludes.read(s);
     }
-    var line = htmlencode(s.readline());
+    var line = s.readline().htmlencode();
     line = File.read(line);
     line = Link.read(line);
     line = Format.read(line);
