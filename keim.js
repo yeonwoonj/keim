@@ -85,6 +85,9 @@ var Keim = (function(Keim) {
     html: function(m) {
       return _process(_Stream(m),this.ctx);
     },
+    text: function(s) {
+      return Default.make(this.ctx).read(s);
+    },
     regx: null,
     re: function() {
       return new RegExp(this.regx.source, this.regx.flags);
@@ -365,14 +368,13 @@ var Keim = (function(Keim) {
   });
 
   var Excludes = _TP('code', /^(.*?){{{(?:#!html|(?!#\w+ |\+[1-5] ))[^]*?}}}/i, function(s) {
-  var html='';
+    var html='';
 
     var text = s.peek();
-
     var [_,part] = this.re().exec(text);
     var pos = part.length;
     if (pos) {
-      html += Default.read(_Stream(part));
+      html += this.text(_Stream(part));
       s.seek(pos);
       text = text.substr(pos);
     }
@@ -389,7 +391,7 @@ var Keim = (function(Keim) {
     }
 
     if (end==-1) { // when brackets are not closed properly
-      html += Default.read(s);
+      html += this.text(s);
       return html;
     }
 
@@ -406,7 +408,7 @@ var Keim = (function(Keim) {
         html += this.wrap(text);
       }
     }
-    html += Default.read(s);
+    html += this.text(s);
     return html;
   });
 
@@ -480,7 +482,7 @@ var Keim = (function(Keim) {
 
   var Default = _TP(null, null, function(s) {
     if (Excludes.peek(s)) {
-      return Excludes.read(s);
+      return Excludes.make(this.ctx).read(s);
     }
     var line = s.readline().htmlencode();
     line = File.read(line);
