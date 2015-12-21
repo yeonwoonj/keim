@@ -17,6 +17,16 @@
  *
  */
 
+String.prototype.count = function(sub,beg,end) {
+  var c=0;
+  var p=beg||0;
+  var e=end||this.length;
+  while ((p=this.indexOf(sub,p))!=-1 && (p+=sub.length)<=e) {
+    c+=1;
+  }
+  return c;
+}
+
 var Keim = (function(Keim) {
 
   var htmlencode = function(s) {
@@ -354,9 +364,32 @@ var Keim = (function(Keim) {
     return html;
   });
 
-  var Footnote = _TP(null, /\[\*(\S+)?\s+(.+?)\]/g, function(line) {
+  var Footnote = _TP(null, /\[\*(\S+)? +/g, function(line) {
     var ctx = this.ctx;
-    return line.replace(this.re(), function(m,tag,txt) {
+
+    var replacer = function(line,re,o,c,fun) {
+      do {
+        var m = re.exec(line);
+        if (m) {
+          var beg = m.index;
+          var end = beg;
+          var num=0;
+          while ((end=line.indexOf(c,end))!=-1) {
+            num+=1;
+            end+=c.length;
+            if (line.count(o,beg,end)==num) {
+              var txt = line.substring(beg+m[0].length, end-c.length);
+              line = line.substr(0,beg)+fun(m,txt)+line.substr(end);
+              re.lastIndex=end;
+              break;
+            }
+          }
+        }
+      } while(re.global && m);
+      return line;
+    }
+
+    return replacer(line, this.re(), '[', ']', function([_1,tag,_2],txt) {
       var c = ctx.fn.length+1;
       tag = tag||c;
       ctx.fn.push('<a id="rfn-'+c+'" href="#fn-'+c+'">['+tag+']</a> '+txt);
@@ -382,8 +415,7 @@ var Keim = (function(Keim) {
     while ((end=text.indexOf('}}}',end))!=-1) {
       num+=1;
       end+=3;
-      var all = text.substring(0,end).match(/{{{/g);
-      if (all.length == num) {
+      if (text.count('{{{',0,end)==num) {
         s.seek(end);
         break;
       }
