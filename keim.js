@@ -329,14 +329,6 @@ var Keim = (function(Keim) {
     return this.wrap(html);
   });
 
-  var HRule = _TP('hr', /^-{4}/, function(s) {
-    var line = s.readline();
-    if (line.search(/^-{11}/)!=-1) {
-      return line;
-    }
-    return '<hr>';
-  });
-
   var Heading = _TP('h', /^(={1,6}) +(.+?) +\1 */, function(s) {
     var toc = this.ctx.toc;
     var m = s.exec(this.re());
@@ -364,41 +356,16 @@ var Keim = (function(Keim) {
     return html;
   });
 
-  var Footnote = _TP(null, /\[\*(\S+)? +/g, function(line) {
-    var ctx = this.ctx;
-
-    var replacer = function(line,re,o,c,fun) {
-      do {
-        var m = re.exec(line);
-        if (m) {
-          var beg = m.index;
-          var end = beg;
-          var num=0;
-          while ((end=line.indexOf(c,end))!=-1) {
-            num+=1;
-            end+=c.length;
-            if (line.count(o,beg,end)==num) {
-              var txt = line.substring(beg+m[0].length, end-c.length);
-              line = line.substr(0,beg)+fun(m,txt)+line.substr(end);
-              re.lastIndex=end;
-              break;
-            }
-          }
-        }
-      } while(re.global && m);
+  var HRule = _TP('hr', /^-{4}/, function(s) {
+    var line = s.readline();
+    if (line.search(/^-{11}/)!=-1) {
       return line;
     }
-
-    return replacer(line, this.re(), '[', ']', function([_1,tag],txt) {
-      var c = ctx.fn.length+1;
-      tag = tag||c;
-      ctx.fn.push('<a id="rfn-'+c+'" href="#fn-'+c+'">['+tag+']</a> '+txt);
-      return '<sup id="fn-'+c+'" title="'+txt.replace(/<.*?>/g,'')+'"><a href="#rfn-'+c+'">['+tag+']</a></sup>';
-    });
+    return '<hr>';
   });
 
   var Excludes = _TP('code', /^(.*?){{{(?:#!html|(?!#\w+ |\+[1-5] ))[^]*?}}}/i, function(s) {
-    var html='';
+  var html='';
 
     var text = s.peek();
 
@@ -443,15 +410,6 @@ var Keim = (function(Keim) {
     return html;
   });
 
-  var Stub = _TP(null, null, function(line) {
-    line = line.replace(/\[(목차|tableofcontents)\]/ig, '<ol id="toc">목차'+this.ctx.toc.l.join('')+'</ol>');
-
-    line = line.replace(/\[(각주|footnote)\]/ig, '');
-    line = Footnote.make(this.ctx).read(line);
-    line += '<hr>'+this.ctx.fn.join('<br>');
-    return line;
-  });
-
   var File = _TP('span', null, function(line) {
     line = line.replace(/\[\[:?파일:.+?\]\]/g, '<span class="file-truncated"/>');
     line = line.replace(/attachment:(\S+)/ig, '<span class="attachment-truncated"/>');
@@ -489,6 +447,37 @@ var Keim = (function(Keim) {
     return line;
   });
 
+  var Footnote = _TP(null, null, function(line,ctx) {
+    var replacer = function(line,re,o,c,fun) {
+      do {
+        var m = re.exec(line);
+        if (m) {
+          var beg = m.index;
+          var end = beg;
+          var num=0;
+          while ((end=line.indexOf(c,end))!=-1) {
+            num+=1;
+            end+=c.length;
+            if (line.count(o,beg,end)==num) {
+              var txt = line.substring(beg+m[0].length, end-c.length);
+              line = line.substr(0,beg)+fun(m,txt)+line.substr(end);
+              re.lastIndex=end;
+              break;
+            }
+          }
+        }
+      } while(re.global && m);
+      return line;
+    }
+
+    return replacer(line, /\[\*(\S+)? +/g, '[', ']', function([_,tag],txt) {
+      var c = ctx.fn.length+1;
+      tag = tag||c;
+      ctx.fn.push('<a id="rfn-'+c+'" href="#fn-'+c+'">['+tag+']</a> '+txt);
+      return '<sup id="fn-'+c+'" title="'+txt.replace(/<.*?>/g,'')+'"><a href="#rfn-'+c+'">['+tag+']</a></sup>';
+    });
+  });
+
   var Default = _TP(null, null, function(s) {
     if (Excludes.peek(s)) {
       return Excludes.read(s);
@@ -497,7 +486,16 @@ var Keim = (function(Keim) {
     line = File.read(line);
     line = Link.read(line);
     line = Format.read(line);
+    line = Footnote.read(line,this.ctx);
     return line.replace('\n','<br>');
+  });
+
+  var Stub = _TP(null, null, function(line) {
+    line = line.replace(/\[(목차|tableofcontents)\]/ig, '<ol id="toc">목차'+this.ctx.toc.l.join('')+'</ol>');
+
+    line = line.replace(/\[(각주|footnote)\]/ig, '');
+    line += '<hr>'+this.ctx.fn.join('<br>');
+    return line;
   });
   /* end of tag processors */
 
