@@ -70,8 +70,8 @@ var Keim = (function(Keim) {
       },
     };
   }
-  /* tag processors */
 
+  /* tag processors */
   var TP = {
     name: null,
     wrap: function(o,tag) {
@@ -85,8 +85,8 @@ var Keim = (function(Keim) {
     html: function(m) {
       return _process(_Stream(m),this.ctx);
     },
-    text: function(s) {
-      return Default.make(this.ctx).read(s);
+    deco: function(m) {
+      return Default.make(this.ctx).read(_Stream(m));
     },
     regx: null,
     re: function() {
@@ -351,11 +351,11 @@ var Keim = (function(Keim) {
     }
     toc.d.push(hn);
     var num=toc.n.join('.');
-    var html = this.html(l);
+    var html = this.deco(l);
     toc.l.push('<li style="margin-left:'+toc.n.length+'em"><a href="#s-'+num+'">'+num+'.</a> '+html+'</li>');
 
     html = '<h'+hn+' id="s-'+num+'"><a href="#toc">'+num+'.</a> '+html+'</h'+hn+'>';
-    html += this.html(s.readline());
+    html += this.deco(s.readline());
     return html;
   });
 
@@ -374,7 +374,7 @@ var Keim = (function(Keim) {
     var [_,part] = this.re().exec(text);
     var pos = part.length;
     if (pos) {
-      html += this.text(_Stream(part));
+      html += this.deco(part);
       s.seek(pos);
       text = text.substr(pos);
     }
@@ -391,7 +391,7 @@ var Keim = (function(Keim) {
     }
 
     if (end==-1) { // when brackets are not closed properly
-      html += this.text(s);
+      html += this.deco(s.readline());
       return html;
     }
 
@@ -408,7 +408,7 @@ var Keim = (function(Keim) {
         html += this.wrap(text);
       }
     }
-    html += this.text(s);
+    html += this.deco(s.readline());
     return html;
   });
 
@@ -449,13 +449,13 @@ var Keim = (function(Keim) {
     return line;
   });
 
-  var Footnote = _TP(null, null, function(line,ctx) {
+  var Footnote = _TP(null, /\[\*(\S+)? +/g, function(line) {
     var replacer = function(line,re,o,c,fun) {
       do {
         var m = re.exec(line);
         if (m) {
-          var beg = m.index;
-          var end = beg;
+          var beg=m.index;
+          var end=beg;
           var num=0;
           while ((end=line.indexOf(c,end))!=-1) {
             num+=1;
@@ -472,13 +472,29 @@ var Keim = (function(Keim) {
       return line;
     }
 
-    return replacer(line, /\[\*(\S+)? +/g, '[', ']', function([_,tag],txt) {
-      var c = ctx.fn.length+1;
+    var self = this;
+    return replacer(line, this.re(), '[', ']', function([_,tag],txt) {
+      var c = self.ctx.fn.length+1;
       tag = tag||c;
-      ctx.fn.push('<a id="rfn-'+c+'" href="#fn-'+c+'">['+tag+']</a> '+txt);
-      return '<sup id="fn-'+c+'" title="'+txt.replace(/<.*?>/g,'')+'"><a href="#rfn-'+c+'">['+tag+']</a></sup>';
+      var html = self.deco(txt);
+      self.ctx.fn.push('<a id="rfn-'+c+'" href="#fn-'+c+'">['+tag+']</a> '+html);
+      return '<sup id="fn-'+c+'" title="'+html.replace(/<.*?>/g,'')+'"><a href="#rfn-'+c+'">['+tag+']</a></sup>';
     });
   });
+
+  var LazyEval = _TP(null, null, function(line) {
+    line = line.replace(/\[(목차|tableofcontents)\]/ig, '<!keim toc>');
+    line = line.replace(/\[(각주|footnote)\]/ig, '');
+    return line;
+  });
+  LazyEval.set = function(html) {
+    html = html.replace('<!keim toc>', '<ol id="toc">목차'+this.ctx.toc.l.join('')+'</ol>');
+
+    if (this.ctx.fn.length) {
+      html += '<hr>'+this.ctx.fn.join('<br>');
+    }
+    return html;
+  }
 
   var Default = _TP(null, null, function(s) {
     if (Excludes.peek(s)) {
@@ -488,18 +504,10 @@ var Keim = (function(Keim) {
     line = File.read(line);
     line = Link.read(line);
     line = Format.read(line);
-    line = Footnote.read(line,this.ctx);
+    line = Footnote.make(this.ctx).read(line);
+    line = LazyEval.read(line);
     return line.replace('\n','<br>');
   });
-
-  var Stub = _TP(null, null, function(line) {
-    line = line.replace(/\[(목차|tableofcontents)\]/ig, '<ol id="toc">목차'+this.ctx.toc.l.join('')+'</ol>');
-
-    line = line.replace(/\[(각주|footnote)\]/ig, '');
-    line += '<hr>'+this.ctx.fn.join('<br>');
-    return line;
-  });
-  /* end of tag processors */
 
   var parsers1 = [
     List,
@@ -555,9 +563,9 @@ var Keim = (function(Keim) {
     this.html = function(markup) {
       var html='';
       var ctx = new Context();
-      html = Stub.make(ctx).read(html);
+      var lzy = LazyEval.make(ctx);
       html = _process(_Stream(markup),ctx);
-      html = Stub.make(ctx).read(html);
+      html = lzy.set(html);
       return html;
     };
   }
