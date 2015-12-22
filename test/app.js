@@ -1,6 +1,6 @@
 
 var globalEval = eval;
-var N = 250;
+var N = 500;
 
 function preview() {
   var ta = document.querySelector('#input textarea');
@@ -8,30 +8,49 @@ function preview() {
   div.innerHTML = Keim.process(ta.value);
 }
 
-var keim;
-function rekeim() {
-  var updated=false;
-  var req = new XMLHttpRequest();
-  req.open('get', '/keim.js', false);
-  req.onreadystatechange = function() {
-    if (req.readyState==4) {
-      if (keim!=req.responseText) {
-        keim = req.responseText;
-        globalEval(keim);
-        updated=true;
-        console.debug('Keim updated: '+new Date());
+function reload_ifchanged(url,chk,fun) {
+  var head = new XMLHttpRequest();
+  head.open('head', url);
+  head.onreadystatechange = function() {
+    if (head.readyState==2) {
+      var t  = new Date(head.getResponseHeader('Last-Modified'));
+      if (chk(t)) {
+        var get = new XMLHttpRequest();
+        get.open('get', url);
+        get.onreadystatechange = function() {
+          if (get.readyState==4) {
+            fun(get.responseText);
+          }
+        }
+        get.send();
       }
     }
-  };
-  req.send(null);
-  return updated;
+  }
+  head.send();
+}
+
+var last;
+function rekeim() {
+  reload_ifchanged('/keim.js', function(t) {
+    if (last && t.valueOf()==last.valueOf()) {
+      return false;
+    }
+    last = t;
+    console.log('update detect: '+t);
+    return true;
+  }, function(t) {
+    globalEval(t);
+    console.log('update complete.');
+
+    preview();
+  });
 }
 
 var text = "";
 var preview_timeout_id = null;
 function watch() {
   var ta = document.querySelector('#input textarea');
-  if (text != ta.value || rekeim()) {
+  if (text != ta.value) {
     text = ta.value;
 
     if (preview_timeout_id) {
@@ -49,6 +68,7 @@ function main() {
   ta.focus();
 
   window.setInterval(watch, N);
+  window.setInterval(rekeim, N*5);
 }
 
 window.onload = main;
