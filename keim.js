@@ -368,48 +368,57 @@ var Keim = (function(Keim) {
   });
 
   var Excludes = _TP('code', /^(.*?){{{(?:#!html|(?!#\w+ |\+[1-5] ))[^]*?}}}/i, function(s) {
-    var html='';
-
-    var text = s.peek();
-    var [_,part] = this.re().exec(text);
-    var pos = part.length;
-    if (pos) {
-      html += this.deco(part);
-      s.seek(pos);
-      text = text.substr(pos);
-    }
-
-    var num=0;
-    var end=0;
-    while ((end=text.indexOf('}}}',end))!=-1) {
-      num+=1;
-      end+=3;
-      if (text.count('{{{',0,end)==num) {
-        s.seek(end);
-        break;
-      }
-    }
-
-    if (end==-1) { // when brackets are not closed properly
-      html += this.deco(s.readline());
-      return html;
-    }
-
-    text = text.substring(3,end-3);
-    if (text.substr(0,6).toLowerCase()=='#!html') {
-      html += text.substr(6);
-    } else {
-      var pre = text.indexOf('\n')!=-1;
-      text = text.htmlencode();
-      if (pre) {
-        text = text.replace(/^\n+/,'');
-        html += this.wrap(this.wrap(text),'pre');
+    var self=this;
+    var code=function(t,b,e) {
+      var txt=t.substring(b+3,e-3);
+      if (txt.toLowerCase().startsWith('#!html')){
+        txt=txt.substr(6);
       } else {
-        html += this.wrap(text);
+        txt=txt.htmlencode();
+        if (txt.indexOf('\n')!=-1) {
+          txt=txt.replace(/^\n+/,'');
+          txt=self.wrap(self.wrap(txt),'pre');
+        } else {
+          txt=self.wrap(txt);
+        }
       }
+      self.ctx.ex.push(txt);
+      return '{!keim ex#'+self.ctx.ex.length+'}';
     }
-    html += this.deco(s.readline());
-    return html;
+
+    var find=[];
+    var text=s.peek();
+    var beg=0,end=0;
+    do {
+      var m = this.re().exec(text.substr(beg));
+      if (m) {
+        beg+=m[1].length;
+        end=beg;
+
+        var num=0;
+        while ((end=text.indexOf('}}}',end))!=-1) {
+          num+=1;
+          end+=3;
+          if (text.count('{{{',beg,end)==num) {
+            break;
+          }
+        }
+        if (end==-1) {
+          beg+=3;
+          continue;
+        }
+
+        find.push([beg,end]);
+        beg=end;
+      }
+    } while (m);
+
+    while (find.length) {
+      var [b,e]=find.pop();
+      b+=s.rpos; e+=s.rpos;
+      s.text=s.text.substr(0,b) + code(s.text,b,e) + s.text.substr(e);
+    }
+    // no return
   });
 
   var File = _TP('span', null, function(line) {
@@ -435,13 +444,13 @@ var Keim = (function(Keim) {
 
   var Format = _TP(null, null, function(line) {
     line = line.replace(/\[br\]/g,'<br>');
-    line = line.replace(/'''(.+?)'''/g,'<strong>$1</strong>');
-    line = line.replace(/''(.+?)''/g,'<i>$1</i>');
-    line = line.replace(/~~(.+?)~~/g,'<s>$1</s>');
-    line = line.replace(/--(.+?)--/g,'<s>$1</s>');
-    line = line.replace(/__(.+?)__/g,'<u>$1</u>');
-    line = line.replace(/\^\^(.+?)\^\^/g,'<sup>$1</sup>');
-    line = line.replace(/,,(.+?),,/g,'<sub>$1</sub>');
+    line = line.replace(/'''(.+?)'''(?!')/g,'<strong>$1</strong>');
+    line = line.replace(/''(.+?)''(?!')/g,'<i>$1</i>');
+    line = line.replace(/~~(.+?)~~(?!~)/g,'<s>$1</s>');
+    line = line.replace(/--(.+?)--(?!-)/g,'<s>$1</s>');
+    line = line.replace(/__(.+?)__(?!_)/g,'<u>$1</u>');
+    line = line.replace(/\^\^(.+?)\^\^(?!\^)/g,'<sup>$1</sup>');
+    line = line.replace(/,,(.+?),,(?!,)/g,'<sub>$1</sub>');
     line = line.replace(/{{{\+([1-5]) +(.*?)}}}(?!})/g,'<span class="font-size-$1">$2</span>');
     line = line.replace(/{{{(#[0-9a-f-A-F]{3}) +(.*?)}}}(?!})/g,'<span style="color:$1">$2</span>');
     line = line.replace(/{{{(#[0-9a-f-A-F]{6}) +(.*?)}}}(?!})/g,'<span style="color:$1">$2</span>');
@@ -476,29 +485,32 @@ var Keim = (function(Keim) {
     return replacer(line, this.re(), '[', ']', function([_,tag],txt) {
       var c = self.ctx.fn.length+1;
       tag = tag||c;
-      var html = self.deco(txt);
-      self.ctx.fn.push('<a id="rfn-'+c+'" href="#fn-'+c+'">['+tag+']</a> '+html);
-      return '<sup id="fn-'+c+'" title="'+html.replace(/<.*?>/g,'')+'"><a href="#rfn-'+c+'">['+tag+']</a></sup>';
+      self.ctx.fn.push('<a id="rfn-'+c+'" href="#fn-'+c+'">['+tag+']</a> '+txt);
+      return '<sup id="fn-'+c+'" title="'+txt.replace(/<.*?>/g,'')+'"><a href="#rfn-'+c+'">['+tag+']</a></sup>';
     });
   });
 
   var LazyEval = _TP(null, null, function(line) {
-    line = line.replace(/\[(목차|tableofcontents)\]/ig, '<!keim toc>');
+    line = line.replace(/\[(목차|tableofcontents)\]/ig, '{!keim toc}');
     line = line.replace(/\[(각주|footnote)\]/ig, '');
     return line;
   });
   LazyEval.set = function(html) {
-    html = html.replace('<!keim toc>', '<ol id="toc">목차'+this.ctx.toc.l.join('')+'</ol>');
+    html = html.replace('{!keim toc}', '<ol id="toc">목차'+this.ctx.toc.l.join('')+'</ol>');
 
     if (this.ctx.fn.length) {
       html += '<hr>'+this.ctx.fn.join('<br>');
+    }
+
+    for (var i=0; i<this.ctx.ex.length; i++) {
+      html = html.replace(new RegExp('{!keim ex#'+(i+1)+'}','g'),this.ctx.ex[i]);
     }
     return html;
   }
 
   var Default = _TP(null, null, function(s) {
     if (Excludes.peek(s)) {
-      return Excludes.make(this.ctx).read(s);
+      Excludes.make(this.ctx).read(s);
     }
     var line = s.readline().htmlencode();
     line = File.read(line);
@@ -559,6 +571,7 @@ var Keim = (function(Keim) {
         n: [],
       }
       this.fn = [];
+      this.ex = [];
     }
     this.html = function(markup) {
       var html='';
