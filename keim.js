@@ -443,7 +443,7 @@ var Keim = (function(Keim) {
   });
 
   var Format = _TP(null, null, function(line) {
-    line = line.replace(/\[br\]/g,'<br>');
+    line = line.replace(/\[br\]/ig,'<br>');
     line = line.replace(/'''(.+?)'''(?!')/g,'<strong>$1</strong>');
     line = line.replace(/''(.+?)''(?!')/g,'<i>$1</i>');
     line = line.replace(/~~(.+?)~~(?!~)/g,'<s>$1</s>');
