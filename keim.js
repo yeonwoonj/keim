@@ -502,9 +502,14 @@ var Keim = (function(Keim) {
       html += '<hr>'+this.ctx.fn.join('<br>');
     }
 
+    html = html.replace(/\[youtube\(.+?\)\]/ig,'<span class="video-truncated"/>');
+
     for (var i=0; i<this.ctx.ex.length; i++) {
       html = html.replace(new RegExp('{!keim ex#'+(i+1)+'}','g'),this.ctx.ex[i]);
     }
+
+    html = html.replace(/(<iframe[^]+?src\s*=\s*")([^]+?)(")/g, '<span class="video-truncated"/>$1$3');
+    html = html.replace(/(<video[^]+?src\s*=\s*")([^]+?)(")/g, '<span class="video-truncated"/>$1$3');
     return html;
   }
 
