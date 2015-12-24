@@ -470,9 +470,9 @@ var Keim = (function(Keim) {
             num+=1;
             end+=c.length;
             if (line.count(o,beg,end)==num) {
-              var txt = line.substring(beg+m[0].length, end-c.length);
-              line = line.substr(0,beg)+fun(m,txt)+line.substr(end);
-              re.lastIndex=end;
+              var txt = fun(m,line.substring(beg+m[0].length, end-c.length));
+              line = line.substr(0,beg)+txt+line.substr(end);
+              re.lastIndex=beg+txt.length;
               break;
             }
           }
