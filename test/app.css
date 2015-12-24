@@ -45,7 +45,10 @@ body {
 .font-size-4 { font-size: 1.4em; }
 .font-size-5 { font-size: 1.5em; }
 
-.external-link { color:green; }
+.external-link {
+  color:green;
+  word-break:break-all;
+}
 .external-link::after { content:'➚'; vertical-align:text-top; font-size:.3em; }
 
 footer div.license {
