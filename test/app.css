@@ -17,7 +17,7 @@ body {
 .container td { border:1px solid #dddddd; }
 .container ol { padding-left:1.2em; }
 .container li { margin:0; padding:0; }
-.container code { background-color:silver; font-familty:monospace; }
+.container code { font-familty:monospace; }
 
 .container h1 { font-size:1.6em; }
 .container h2 { font-size:1.5em; }
