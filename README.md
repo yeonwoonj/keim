@@ -10,7 +10,7 @@ supported. Also, the rendering output may not be the same, though in most cases,
 this is intended behaviour. Please use [GitHub issues](https://github.com/yeonwoonj/keim/issues) for any suggestions.
 
 ## Limitations
-attachment such as image, and video tags - strip
+image and video tags will be truncated. also, the iframe is treated as a video tag.
 
 ## Running a demo locally
 1. git clone https://github.com/yeonwoonj/keim.git
