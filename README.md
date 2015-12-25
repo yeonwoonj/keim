@@ -18,6 +18,8 @@ image and video tags will be truncated. also, the iframe is treated as a video t
 3. python -m SimpleHTTPServer 8000
 4. open http://localhost:8000/test
 
+NB: Use latest Firefox or Safari to run the test. Chrome and Node.js won't work.
+
 ## See Also
 * https://namu.wiki/w/나무위키:엔진
 * https://namu.wiki/w/나무위키:편집%20도움말
