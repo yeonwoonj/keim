@@ -431,9 +431,17 @@ var Keim = (function(Keim) {
     return line;
   });
 
+  var Category = _TP(null, null, function(line) {
+    var self = this;
+    return line.replace(/\[\[(분류\:(.+?))\]\]/g, function(m,link,cat) {
+      self.ctx.cat.push(cat.link(link));
+      return '';
+    });
+  });
+
   var Link = _TP('a', null, function(line) {
     var self = this;
-    return line.replace(/\[\[(.+?)(?:\|(.+?))?\]\]/g, function(m,link,text) {
+    return line.replace(/\[\[\:?(.+?)(?:\|(.+?))?\]\]/g, function(m,link,text) {
       self.attr = ' href="'+link+'"';
       if (link.indexOf('://')!=-1) {
         self.attr += ' class="external-link"';
@@ -498,6 +506,11 @@ var Keim = (function(Keim) {
   LazyEval.set = function(html) {
     html = html.replace('{!keim toc}', '<ol id="toc">목차'+this.ctx.toc.l.join('')+'</ol>');
 
+    if (this.ctx.cat.length) {
+      var cat=this.ctx.cat.filter(function(c,p,self) { return self.indexOf(c)==p; });
+      html += '<div class="category"> 분류: '+cat.join(' | ')+'</div>';
+    }
+
     if (this.ctx.fn.length) {
       html += '<hr>'+this.ctx.fn.join('<br>');
     }
@@ -519,6 +532,7 @@ var Keim = (function(Keim) {
     }
     var line = s.readline().htmlencode();
     line = File.read(line);
+    line = Category.make(this.ctx).read(line);
     line = Link.read(line);
     line = Format.read(line);
     line = Footnote.make(this.ctx).read(line);
@@ -577,6 +591,7 @@ var Keim = (function(Keim) {
       }
       this.fn = [];
       this.ex = [];
+      this.cat= [];
     }
     this.html = function(markup) {
       var html='';

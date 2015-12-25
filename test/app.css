@@ -51,6 +51,11 @@ body {
 }
 .external-link::after { content:'➚'; vertical-align:text-top; font-size:.3em; }
 
+.category {
+  border:1px solid indigo;
+  padding:5px;
+}
+
 footer div.license {
   font-size:8px;
   overflow:hidden;
