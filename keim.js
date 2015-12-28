@@ -210,7 +210,6 @@ var Keim = (function(Keim) {
     var html='';
 
     var table = {
-      on: false,
       attr: function(p) {
         var cls=[],sty=[];
         var stk = {
@@ -235,7 +234,7 @@ var Keim = (function(Keim) {
         }
         var attr='';
         if (cls.length) attr += ' class="'+cls.join(' ')+'"';
-        if (sty.length) attr += ' style="'+sty.join(' ')+'"';
+        if (sty.length) attr += ' style="'+sty.join(';')+'"';
         return attr;
       },
 
